@@ -1,0 +1,12 @@
+/build/
+/out/
+*.apk
+
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,53 @@
+name: Patch APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct URL to the game APK'
+        required: true
+      template_url:
+        description: 'Direct URL to an APK that already ships BepInEx 6'
+        required: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27
+          add-to-path: false
+
+      - name: Build loader
+        run: NDK="$ANDROID_NDK_HOME" ./native/build.sh
+
+      - name: Install python deps
+        run: pip install lief
+
+      - name: Fetch APKs
+        run: |
+          curl -sL "${{ inputs.apk_url }}" -o game.apk
+          curl -sL "${{ inputs.template_url }}" -o template.apk
+
+      - name: Extract runtime
+        run: python3 tools/extract_runtime.py template.apk
+
+      - name: Patch libfusion
+        run: |
+          python3 tools/patch_libfusion.py resources/so/libfusion.so /tmp/fusion.so
+          mv /tmp/fusion.so resources/so/libfusion.so
+
+      - name: Patch APK
+        run: python3 patch.py --src game.apk --template template.apk --out patched.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: patched-apk
+          path: patched.apk
